@@ -1,15 +1,11 @@
 package com.training.job_hunting.services;
 
-import com.training.job_hunting.auth.CurrentUserProvider;
 import com.training.job_hunting.dtos.ReminderRequest;
 import com.training.job_hunting.dtos.ReminderResponse;
-import com.training.job_hunting.exceptions.InvalidReferenceException;
 import com.training.job_hunting.exceptions.ReminderNotFoundException;
 import com.training.job_hunting.models.Application;
 import com.training.job_hunting.models.Reminder;
-import com.training.job_hunting.repositories.ApplicationRepository;
 import com.training.job_hunting.repositories.ReminderRepository;
-import com.training.job_hunting.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,23 +15,17 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ReminderService {
 
-    private final ApplicationRepository applicationRepository;
-    private final CurrentUserProvider currentUserProvider;
-    private final UserRepository userRepository;
     private final ReminderRepository reminderRepository;
     private final ApplicationService applicationService;
 
-    public ReminderService(ApplicationRepository applicationRepository, CurrentUserProvider currentUserProvider, UserRepository userRepository, ReminderRepository reminderRepository, ApplicationService applicationService) {
-        this.applicationRepository = applicationRepository;
-        this.currentUserProvider = currentUserProvider;
-        this.userRepository = userRepository;
+    public ReminderService(ReminderRepository reminderRepository, ApplicationService applicationService) {
         this.reminderRepository = reminderRepository;
         this.applicationService = applicationService;
     }
 
     public Reminder getOwnedReminderById(Application application, Long reminderId) {
-        return applicationService.getOwnedApplicationById(application.getId()).getReminders().stream()
-                .filter(reminder -> reminder.getId().equals(reminderId))
+        return application.getReminders().stream()
+                .filter(reminder -> reminderId.equals(reminder.getId()))
                 .findFirst()
                 .orElseThrow(() -> new ReminderNotFoundException(reminderId));
     }
