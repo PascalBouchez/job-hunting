@@ -9,13 +9,11 @@ import com.training.job_hunting.models.ApplicationStatus;
 import com.training.job_hunting.models.Enterprise;
 import com.training.job_hunting.models.User;
 import com.training.job_hunting.repositories.ApplicationRepository;
-import com.training.job_hunting.repositories.EnterpriseRepository;
 import com.training.job_hunting.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,7 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ApplicationServiceTest {
+class ApplicationServiceTest {
 
     @Mock
     private EnterpriseService enterpriseService;
@@ -52,12 +50,7 @@ public class ApplicationServiceTest {
     @Test
     void create_throwsInvalidReference_whenCompanyNotOwned() {
         // Given
-        ApplicationRequest applicationRequest = new ApplicationRequest(
-                "Test job", "Test job description",
-                "www.url.com", 1000L,
-                "Nantes", LocalDate.now(), "",
-                ApplicationStatus.YET_TO_SEND_RESUME, 42L
-        );
+        ApplicationRequest applicationRequest = validRequest(ApplicationStatus.YET_TO_SEND_RESUME, 42L);
         when(enterpriseService.findOwnedEnterprise(42L)).thenReturn(Optional.empty());
 
         // When / Then
@@ -70,16 +63,9 @@ public class ApplicationServiceTest {
     @Test
     void create_setsDefaultStatus_whenStatusMissing() {
         // Given
-        ApplicationRequest applicationRequest = new ApplicationRequest(
-                "Test job", "Test job description",
-                "www.url.com", 1000L,
-                "Nantes", LocalDate.now(), "",
-                null, 1L
-        );
+        ApplicationRequest applicationRequest = validRequest(null, 1L);
         User currentUser = new User();
         Enterprise enterprise = new Enterprise();
-        enterprise.setName("Nantes Digital");
-        enterprise.setHeadquarters("Nantes");
 
         when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
         when(userRepository.getReferenceById(1L)).thenReturn(currentUser);
@@ -94,16 +80,14 @@ public class ApplicationServiceTest {
         verify(applicationRepository).save(captor.capture());
         Application saved = captor.getValue();
         assertThat(saved.getStatus()).isSameAs(ApplicationStatus.YET_TO_SEND_RESUME);
+        assertThat(saved.getUser()).isSameAs(currentUser);
+        assertThat(saved.getEnterprise()).isSameAs(enterprise);
     }
 
     @Test
     void update_throwsApplicationNotFound_whenApplicationNotExists_withoutCheckingEnterprise() {
         // Given
-        ApplicationRequest applicationRequest = new ApplicationRequest(
-                "Job test", "Job description",
-                "www.url.com", 1000L,
-                "Nantes", LocalDate.now(), "",
-                null, 1L);
+        ApplicationRequest applicationRequest = validRequest(null, 1L);
         when(currentUserProvider.getCurrentUserId()).thenReturn(1L);
         when(applicationRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.empty());
 
@@ -111,5 +95,14 @@ public class ApplicationServiceTest {
         assertThatThrownBy(() -> applicationService.update(1L, applicationRequest))
                 .isInstanceOf(ApplicationNotFoundException.class);
         verify(enterpriseService, never()).findOwnedEnterprise(any());
+    }
+
+    private ApplicationRequest validRequest(ApplicationStatus status, Long enterpriseId) {
+        return new ApplicationRequest(
+                "Test job", "Test job description",
+                "www.url.com", 1000L,
+                "Nantes", LocalDate.now(), "",
+                status, enterpriseId
+        );
     }
 }
